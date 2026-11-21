@@ -1,0 +1,21 @@
+PASAPORTE DE LA BIODIVERSIDAD - VERSION DE PRUEBA
+
+1. Descomprime el ZIP. Sube TODOS los archivos de esta carpeta a la raíz de tu repositorio GitHub pasaporte-biodiversidad (puedes omitir bosque.png y huellas_referencia.png, que no usa la app).
+2. En GitHub Pages selecciona rama main y / (root). Abre el enlace publicado en Chrome.
+3. Prueba el recorrido completo y la impresión del certificado.
+4. PARA ACTIVAR REGISTROS Y CORREO:
+   a. En Google Drive crea una hoja de cálculo vacía.
+   b. Abre Extensiones > Apps Script y pega Registro_Google_Apps_Script.gs.
+   c. Guarda, Implementar > Nueva implementación > Aplicación web.
+   d. Ejecutar como: Yo; Quién tiene acceso: Cualquiera. Autoriza permisos de Sheets y Mail.
+   e. Copia la URL que termina en /exec.
+   f. Abre index.html en GitHub (Editar) y reemplaza const REGISTRO_URL=''; por const REGISTRO_URL='TU_URL_EXEC';. Guarda el cambio.
+   g. Realiza un registro de prueba y confirma que llega a la hoja y al correo.
+   h. Para recibir un CSV acumulado: en Apps Script ejecuta enviarArchivoCSV; también puedes crear un activador temporal (diario) para esa función.
+5. SOLO DESPUÉS de probar el correo comparte el enlace mediante un QR.
+
+IMPORTANTE: Esta versión es una prueba funcional. La estación 3 utiliza huellas ESQUEMÁTICAS, NO una identificación científica validada. Reemplazar antes de difusión pública por referencias contrastadas de Panthera onca, Cerdocyon thous y Eira barbara. La escena de la estación 1 es una ilustración y no una fotografía de identificación taxonómica.
+
+PRIVACIDAD: La página registra nombre y empresa. Antes de distribuirla, incorpora un aviso de tratamiento de datos personales, finalidad, responsable y mecanismo de contacto conforme a la normativa aplicable en Colombia. La URL pública de Apps Script permite envíos de terceros; para una campaña masiva se recomienda autenticación/antispam y controles de duplicados. No publiques la hoja de respuestas.
+
+El correo automático se envía por Apps Script una vez configurado y autorizado; descargar el ZIP por sí solo NO activa envíos.
