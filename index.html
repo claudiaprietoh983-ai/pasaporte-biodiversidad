@@ -21,6 +21,16 @@
 @media(max-width:520px){.certificate{padding:14px 10px}.certificate .cert-brand{font-size:14px}.certificate .cert-title{font-size:15px}.certificate .cert-name{font-size:20px}.certificate .commitment{font-size:10.5px;padding:6px}.certificate .seal small{font-size:7px}}
 @page{size:A4 portrait;margin:10mm}
 @media print{html,body{margin:0!important;padding:0!important;width:100%!important;background:white!important}header,.no-print,button{display:none!important}main,.card{margin:0!important;padding:0!important;max-width:none!important;width:100%!important;box-shadow:none!important;border:0!important}.certificate{width:100%!important;max-width:190mm!important;height:auto!important;max-height:none!important;min-height:0!important;margin:0 auto!important;padding:7mm 9mm!important;border:2px solid #285d3a!important;font-size:10pt!important;break-inside:avoid!important;page-break-inside:avoid!important}.certificate .cert-brand{font-size:15pt!important}.certificate .cert-title{font-size:15pt!important}.certificate .cert-name{font-size:19pt!important}.certificate .commitment{font-size:9pt!important;line-height:1.2!important;margin:3mm 0!important;padding:2mm 3mm!important}.certificate .commitment p{margin:1.5mm 0!important}.certificate .seals{flex-wrap:nowrap!important;margin:2mm 0!important}.certificate .seal{height:24mm!important;width:24mm!important;flex:none!important}.certificate .seal img{height:15mm!important;width:15mm!important}.certificate .seal small{font-size:6pt!important}.certificate p{margin:1.5mm 0!important}.certificate h3{margin:2mm 0 1mm!important}*{print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}}
+
+/* Sellos: únicamente la imagen, sin rótulos. */
+.seal img{width:90%;height:90%;aspect-ratio:1;object-fit:cover;border-radius:50%}
+.certificate .seal img{width:90%;height:90%;object-fit:cover}
+@media print{.certificate .seal img{width:21mm!important;height:21mm!important}}
+/* Control de audio disponible en todas las estaciones, oculto al imprimir. */
+.audio-control{position:fixed;right:12px;bottom:14px;z-index:1000;border-radius:30px;
+  padding:10px 14px;background:#173d31;color:#fff;box-shadow:0 3px 12px #0003;
+  font-size:14px;min-height:44px}
+@media print{.audio-control{display:none!important}}
 </style></head><body><header><h1>🌿 PASAPORTE DE LA BIODIVERSIDAD</h1><p>SEMANA POR LA VIDA</p></header><main><div id="app" class="card"></div></main><script>
 'use strict';
 // Para activar el registro centralizado, pegar aquí la URL /exec del despliegue de Apps Script.
@@ -31,9 +41,59 @@ const steps=[['DETENGA LA ACTIVIDAD','Suspenda las labores en el punto del halla
 const footprintImages=['huella_jaguar.jpg','huella_zorro.jpg','huella_cebus.jpg'];
 const sealNames=['Mono cariblanco','Orquídea','Jaguar','Ardilla','Binoculares'];
 const sealImages=['sello_mono.jpg','sello_orquidea.jpg','sello_jaguar.jpg','sello_ardilla.jpg','sello_binoculares.jpg'];
-function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function show(s){app.innerHTML=s;window.scrollTo(0,0)}function notice(t){let e=document.getElementById('status');if(e)e.textContent=t}function advance(){stage++;render()}
-function seal(i){return `<div class="seal"><img src="${sealImages[i]}" alt="Sello de ${sealNames[i]}"><small>${sealNames[i]}</small></div>`}
-function success(i){show(`<h2>¡Estación superada!</h2><p>Has ganado tu sello:</p>${seal(i)}<p>Continúa tu recorrido por la biodiversidad.</p><button onclick="advance()">Siguiente estación →</button>`)}
+function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function show(s){app.innerHTML=s;window.scrollTo(0,0)}function notice(t){let e=document.getElementById('status');if(e)e.textContent=t}function advance(){stage++;render();if(stage===6&&!certificateSoundPlayed){certificateSoundPlayed=true;playCertificateSound()}}
+
+// Sonidos originales generados localmente con Web Audio API (sin archivos externos).
+let soundEnabled=true, audioContext=null, certificateSoundPlayed=false;
+function initAudio(){
+  if(!soundEnabled)return;
+  try{
+    audioContext=audioContext||new (window.AudioContext||window.webkitAudioContext)();
+    if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});
+  }catch(e){audioContext=null}
+}
+function toggleSound(){
+  soundEnabled=!soundEnabled;
+  const btn=document.getElementById('audioToggle');
+  if(btn){btn.textContent=soundEnabled?'🔊 Sonido activado':'🔇 Sonido apagado';btn.setAttribute('aria-pressed',String(soundEnabled))}
+  if(soundEnabled)initAudio();
+}
+function playTone(freq,when,duration,type='sine',volume=0.09){
+  if(!audioContext)return;
+  const osc=audioContext.createOscillator(), gain=audioContext.createGain();
+  osc.type=type;osc.frequency.setValueAtTime(freq,when);
+  gain.gain.setValueAtTime(0.0001,when);
+  gain.gain.exponentialRampToValueAtTime(volume,when+0.025);
+  gain.gain.exponentialRampToValueAtTime(0.0001,when+duration);
+  osc.connect(gain);gain.connect(audioContext.destination);
+  osc.start(when);osc.stop(when+duration+0.02);
+}
+function playSealSound(index){
+  if(!soundEnabled)return;
+  initAudio();if(!audioContext)return;
+  const t=audioContext.currentTime+0.04;
+  const melodies=[
+    [392,523.25,659.25], // mono: descubrimiento
+    [523.25,659.25,783.99], // orquídea: campanillas
+    [196,293.66,392,587.33], // jaguar: registro grave y victoria
+    [440,554.37,659.25,880], // ardilla: notas ágiles
+    [392,493.88,587.33,783.99,987.77] // binoculares: último sello
+  ];
+  const notes=melodies[index]||melodies[0];
+  notes.forEach((f,i)=>playTone(f,t+i*0.13,index===2?0.23:0.28,
+    index===2?'triangle':'sine',index===2?0.075:0.09));
+}
+function playCertificateSound(){
+  if(!soundEnabled)return;
+  initAudio();if(!audioContext)return;
+  const t=audioContext.currentTime+0.08;
+  const notes=[392,493.88,587.33,783.99,659.25,783.99,987.77,1174.66];
+  notes.forEach((f,i)=>playTone(f,t+i*0.23,i===7?0.95:0.42,'sine',0.085));
+  [0,2,4,6].forEach((i)=>playTone(notes[i]/2,t+i*0.23,0.42,'triangle',0.026));
+}
+
+function seal(i){return `<div class="seal"><img src="${sealImages[i]}" alt="Sello de ${sealNames[i]}"></div>`}
+function success(i){playSealSound(i);show(`<h2>¡Estación superada!</h2><p>Has ganado tu sello:</p>${seal(i)}<p>Continúa tu recorrido por la biodiversidad.</p><button onclick="advance()">Siguiente estación →</button>`)}
 function render(){if(stage===0){show(`<h2>Bienvenido a la aventura</h2><p>Recorre seis estaciones, aprende sobre la biodiversidad de Colombia y colecciona cinco sellos.</p><label>Nombre completo<input id="nm" maxlength="100" autocomplete="name" placeholder="Escribe tu nombre"></label><label>Empresa<input id="co" maxlength="100" placeholder="Empresa donde trabajas"></label><p class="muted">Tus datos se registrarán al finalizar si se configura el servicio de recepción.</p><button onclick="start()">Comenzar aventura →</button><p id="status" class="error"></p>`);return}
 if(stage===1){show(`<h2>Estación 1 · Encuentra las especies</h2><p>Busca y toca las tres especies escondidas en la selva.</p><div class="scene" aria-label="Bosque tropical con tres animales"><button class="target ${found.has(0)?'found':''}" style="left:20%;top:17%" onclick="findAnimal(0)" aria-label="Cebus versicolor (mono cariblanco)"></button><button class="target ${found.has(1)?'found':''}" style="left:70%;top:22%" onclick="findAnimal(1)" aria-label="Momotus subrufescens (barranquero)"></button><button class="target ${found.has(2)?'found':''}" style="left:71%;top:70%" onclick="findAnimal(2)" aria-label="Gonatodes albogularis (china)"></button></div><div class="targets">${['Cebus versicolor (mono cariblanco)','Momotus subrufescens (barranquero)','Gonatodes albogularis (china)'].map((n,i)=>`<span class="pill ${found.has(i)?'done':''}">${found.has(i)?'✓ ':''}${n}</span>`).join('')}</div><p id="status">Encontradas: ${found.size} de 3</p>`);return}
 if(stage===2){show(`<h2>Estación 2 · Trivia de biodiversidad</h2><p>Responde correctamente las cinco preguntas para obtener el sello de orquídea.</p>${q.map((item,i)=>`<div class="question"><strong>${i+1}. ${item[0]}</strong>${item[1].map((a,j)=>`<button class="choice ${answers[i]===j?'selected':''}" onclick="pick(${i},${j})">${'ABCD'[j]}. ${a}</button>`).join('')}</div>`).join('')}<button onclick="checkQuiz()">Verificar respuestas</button><p id="status"></p>`);return}
@@ -41,7 +101,7 @@ if(stage===3){show(`<h2>Estación 3 · ¿De quién es la huella?</h2><p>Seleccio
 if(stage===4){show(`<h2>Estación 4 · Encuentro con fauna</h2><p>Ordena las recomendaciones del 1 al 5 utilizando las flechas.</p>${order.map((id,i)=>`<div class="step"><strong>${i+1}. ${steps[id-1][0]}</strong><p>${steps[id-1][1]}</p><button class="secondary" onclick="move(${i},-1)" ${i===0?'disabled':''}>↑ Subir</button><button class="secondary" onclick="move(${i},1)" ${i===4?'disabled':''}>↓ Bajar</button></div>`).join('')}<div class="notice"><b>Recuerde:</b> Una foto desde una distancia segura y la ubicación del hallazgo pueden ayudar a la atención.</div><button onclick="checkOrder()">Verificar orden</button><p id="status"></p>`);return}
 if(stage===5){let e=[['Silla','🪑'],['Binoculares','equipo_binoculares.jpg'],['GPS','equipo_gps.jpg'],['Cámara','equipo_camara.jpg'],['Libreta','equipo_libreta.jpg'],['Oso de peluche','🧸'],['Brocha','🖌️'],['Pelota','⚽']];show(`<h2>Estación 5 · Equipos de monitoreo</h2><p>Selecciona los cuatro objetos que utilizarías en el monitoreo de fauna y flora.</p><div class="equipment">${e.map((x,i)=>`<button class="equip ${selectedEquip.has(i)?'on':''}" onclick="toggleEquip(${i})">${x[1].endsWith('.jpg')?`<img src="${x[1]}" alt="${x[0]}">`:`<div style="font-size:70px">${x[1]}</div>`}<strong>${x[0]}</strong>${selectedEquip.has(i)?' ✓':''}</button>`).join('')}</div><button onclick="checkEquip()">Verificar selección</button><p id="status"></p>`);return}
 if(stage===6){show(`<div class="certificate" id="cert"><div class="cert-ornament left">❧</div><div class="cert-ornament right">❧</div><div class="cert-brand">🌿 PASAPORTE DE LA BIODIVERSIDAD</div><div class="cert-subbrand">Semana por la Vida</div><h2 class="cert-title">CERTIFICADO</h2><h3>Compromiso con la biodiversidad</h3><p>Se reconoce a</p><h2 class="cert-name">${escapeHTML(name)}</h2><p>de la empresa</p><p class="cert-company">${escapeHTML(company)}</p><p>por completar satisfactoriamente las cinco estaciones del Pasaporte de la Biodiversidad.</p><div class="commitment"><h3>🌿 Mi compromiso con la biodiversidad</h3><p>Me comprometo a respetar la fauna y la flora silvestres en cada lugar donde realice mis actividades. Mantendré una distancia segura de los animales, no los alimentaré ni manipularé y cuidaré sus hábitats.</p><p>Antes de intervenir un área, estaré atento a la presencia de seres vivos. Si encuentro un animal silvestre, detendré la actividad en el punto, protegeré el lugar y avisaré al ambiental de campo para que se active la atención correspondiente.</p><p><strong>Cada acción cuenta. Hoy me comprometo a proteger la vida en todas sus formas.</strong></p></div><h3>Mis cinco sellos</h3><div class="seals">${[0,1,2,3,4].map(seal).join('')}</div><p><b>Fecha:</b> ${escapeHTML(date)}</p><div class="cert-landscape">❧ Protejamos toda forma de vida ❧</div></div><div class="no-print"><p class="notice">¡Felicitaciones! Guarda tu certificado usando Imprimir / Guardar como PDF. Selecciona A4 y escala 100 %.</p><button onclick="window.print()">Guardar certificado / Imprimir</button><button class="secondary" onclick="downloadCSV()">Descargar constancia CSV</button><p id="status"></p></div>`);register();return}}
-function start(){name=document.getElementById('nm').value.trim();company=document.getElementById('co').value.trim();if(!name||!company){notice('Completa tu nombre y empresa.');return}date=new Date().toLocaleDateString('es-CO',{year:'numeric',month:'long',day:'numeric'});advance()}
+function start(){initAudio();name=document.getElementById('nm').value.trim();company=document.getElementById('co').value.trim();if(!name||!company){notice('Completa tu nombre y empresa.');return}date=new Date().toLocaleDateString('es-CO',{year:'numeric',month:'long',day:'numeric'});advance()}
 function findAnimal(i){found.add(i);if(found.size===3)success(0);else render()}
 function pick(i,j){answers[i]=j;render()}
 function checkQuiz(){let bad=q.map((x,i)=>answers[i]===x[2]).filter(x=>!x).length;if(!bad)success(1);else notice(`Revisa ${bad} respuesta(s) y vuelve a intentarlo.`)}
@@ -52,4 +112,8 @@ function toggleEquip(i){selectedEquip.has(i)?selectedEquip.delete(i):selectedEqu
 function checkEquip(){if(selectedEquip.size===4&&[1,2,3,4].every(i=>selectedEquip.has(i)))success(4);else notice('Selecciona exactamente los cuatro equipos adecuados.')}
 function downloadCSV(){let row=['Nombre','Empresa','Fecha','Estado','Sellos'].map(x=>'"'+x+'"').join(',')+'\r\n'+[name,company,date,'Certificado',sealNames.join('; ')].map(x=>'"'+x.replaceAll('"','""')+'"').join(',');let a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+row],{type:'text/csv;charset=utf-8'}));a.download='certificado_'+name.replace(/[^a-z0-9]/gi,'_')+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 let registered=false;function register(){if(registered)return;registered=true;if(!REGISTRO_URL){notice('Registro por correo pendiente de configuración. Puedes guardar tu certificado.');return}let data={nombre:name,empresa:company,fecha:date,estado:'Certificado',sellos:sealNames.join('; ')};try{fetch(REGISTRO_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(data)}).then(()=>notice('Registro enviado para procesamiento. La recepción debe comprobarse en la hoja de cálculo.')).catch(()=>notice('No se pudo enviar el registro. Descarga tu constancia CSV.'))}catch(e){notice('Registro no enviado. Descarga tu constancia CSV.')}}render();
-</script></body></html>
+</script>
+<button type="button" class="audio-control no-print" id="audioToggle"
+ onclick="toggleSound()" aria-label="Activar o desactivar sonidos"
+ aria-pressed="true">🔊 Sonido activado</button>
+</body></html>
